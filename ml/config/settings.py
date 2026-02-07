@@ -25,6 +25,8 @@ class Settings:
     # LLMOps data source
     llmops_base_url: str = "http://localhost:8100"
     llmops_data_dir: Optional[str] = None  # For file-based data
+    llmops_enabled: bool = True  # Toggle LLMOps integration
+    llmops_timeout_ms: int = 1000  # Timeout in milliseconds (≤1s for fail-fast)
     
     # Storage directories
     model_store_dir: str = "models"
@@ -41,6 +43,8 @@ class Settings:
         return cls(
             llmops_base_url=os.getenv("LLMOPS_BASE_URL", "http://localhost:8100"),
             llmops_data_dir=os.getenv("LLMOPS_DATA_DIR"),
+            llmops_enabled=os.getenv("LLMOPS_ENABLED", "true").lower() == "true",
+            llmops_timeout_ms=int(os.getenv("LLMOPS_TIMEOUT_MS", "1000")),
             model_store_dir=os.getenv("MODEL_STORE_DIR", "models"),
             prediction_store_dir=os.getenv("PREDICTION_STORE_DIR", "predictions"),
             host=os.getenv("ML_HOST", "0.0.0.0"),

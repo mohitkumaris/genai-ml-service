@@ -74,15 +74,21 @@ class LLMOpsAPIReader(LLMOpsReader):
     Read LLMOps data via HTTP API.
     
     Pulls data from LLMOps query endpoints.
+    
+    DESIGN RULES:
+    - HTTP GET only (read-only)
+    - Short timeout (≤1s) for fail-fast
+    - Fail-open: return empty on any error
+    - Respects LLMOPS_ENABLED setting
     """
     
     def __init__(self, base_url: Optional[str] = None):
         settings = get_settings()
         self.base_url = base_url or settings.llmops_base_url
     
-    def _build_params(self, window: Optional[DataWindow]) -> Dict[str, str]:
+    def _build_params(self, window: Optional[DataWindow], limit: int = 1000) -> Dict[str, str]:
         """Build query parameters from DataWindow."""
-        params = {}
+        params: Dict[str, str] = {"limit": str(limit)}
         if window:
             if window.start_time:
                 params["start_time"] = window.start_time.isoformat()
@@ -90,18 +96,33 @@ class LLMOpsAPIReader(LLMOpsReader):
                 params["end_time"] = window.end_time.isoformat()
         return params
     
-    def _fetch(self, endpoint: str, window: Optional[DataWindow]) -> List[Dict[str, Any]]:
-        """Fetch data from LLMOps API endpoint."""
+    def _fetch(self, endpoint: str, window: Optional[DataWindow], limit: int = 1000) -> List[Dict[str, Any]]:
+        """
+        Fetch data from LLMOps API endpoint.
+        
+        Returns empty list on any error (fail-open).
+        """
+        settings = get_settings()
+        
+        # Check if LLMOps integration is disabled
+        if not settings.llmops_enabled:
+            return []
+        
         url = f"{self.base_url}{endpoint}"
-        params = self._build_params(window)
+        params = self._build_params(window, limit)
         
         try:
-            response = requests.get(url, params=params, timeout=30)
+            # Use configurable timeout (convert ms to seconds)
+            timeout_seconds = settings.llmops_timeout_ms / 1000.0
+            response = requests.get(url, params=params, timeout=timeout_seconds)
             response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            # Log and return empty - we don't want to crash on network issues
-            print(f"Warning: Failed to fetch from {url}: {e}")
+            data = response.json()
+            # Handle wrapped response format from LLMOps API
+            if isinstance(data, dict) and "data" in data:
+                return data["data"]
+            return data if isinstance(data, list) else []
+        except requests.RequestException:
+            # Fail-open: return empty on any network/HTTP error
             return []
     
     def read_traces(self, window: Optional[DataWindow] = None) -> List[Dict[str, Any]]:

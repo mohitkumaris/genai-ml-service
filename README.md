@@ -156,6 +156,8 @@ LLMOps (read-only) ───► ML Service (this service)
 |---------------------|---------|-------------|
 | `LLMOPS_BASE_URL` | `http://localhost:8100` | LLMOps service URL |
 | `LLMOPS_DATA_DIR` | (none) | Local data directory for file-based input |
+| `LLMOPS_ENABLED` | `true` | Enable/disable LLMOps integration (fail-open) |
+| `LLMOPS_TIMEOUT_MS` | `1000` | HTTP timeout for LLMOps calls (milliseconds) |
 | `MODEL_STORE_DIR` | `models` | Directory for trained models |
 | `PREDICTION_STORE_DIR` | `predictions` | Directory for prediction records |
 | `ML_HOST` | `0.0.0.0` | API host |
